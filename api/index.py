@@ -227,14 +227,17 @@ def preview_excel(file_bytes):
 
 # ============================================================
 # API Routes
+# Both /api/* and /* paths (Vercel may strip /api prefix)
 # ============================================================
 
 @app.route('/api/health', methods=['GET'])
+@app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'ok'})
 
 
 @app.route('/api/preview', methods=['POST'])
+@app.route('/preview', methods=['POST'])
 def api_preview():
     try:
         if 'file' not in request.files:
@@ -259,6 +262,7 @@ def api_preview():
 
 
 @app.route('/api/process', methods=['POST'])
+@app.route('/process', methods=['POST'])
 def api_process():
     try:
         if 'file' not in request.files:
@@ -293,6 +297,4 @@ def api_process():
         return jsonify({'error': str(e)}), 500
 
 
-# Vercel handler
-def handler(request):
-    return app
+# Vercel auto-detects Flask `app` variable — no handler needed

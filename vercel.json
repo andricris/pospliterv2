@@ -1,18 +1,7 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "dist/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/index.py" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/dist/$1" }
+  "outputDirectory": "dist",
+  "buildCommand": "",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.py" }
   ]
 }
