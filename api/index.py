@@ -6,10 +6,10 @@ Pure Python, no COM dependency. Works in-memory (no temp files).
 import io
 import json
 import traceback
-from copy import copy
 
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+from openpyxl.styles import Font, PatternFill, Border, Alignment, Protection, Side
 
 app = Flask(__name__)
 CORS(app)
@@ -25,17 +25,40 @@ COL_AT = 46
 
 
 def copy_cell_format(src_cell, dst_cell):
-    try: dst_cell.font = copy(src_cell.font)
+    """Copy cell format manually — more reliable than copy() on serverless."""
+    try:
+        s = src_cell.font
+        dst_cell.font = Font(
+            name=s.name, size=s.size, bold=s.bold, italic=s.italic,
+            underline=s.underline, strike=s.strike, color=s.color
+        )
     except: pass
-    try: dst_cell.fill = copy(src_cell.fill)
+    try:
+        s = src_cell.fill
+        if s and s.fill_type:
+            dst_cell.fill = PatternFill(
+                fill_type=s.fill_type, fgColor=s.fgColor, bgColor=s.bgColor
+            )
     except: pass
-    try: dst_cell.border = copy(src_cell.border)
+    try:
+        s = src_cell.border
+        dst_cell.border = Border(
+            left=s.left, right=s.right, top=s.top, bottom=s.bottom,
+            diagonal=s.diagonal, diagonalUp=s.diagonalUp, diagonalDown=s.diagonalDown
+        )
     except: pass
-    try: dst_cell.number_format = src_cell.number_format
+    try:
+        dst_cell.number_format = src_cell.number_format
     except: pass
-    try: dst_cell.alignment = copy(src_cell.alignment)
+    try:
+        s = src_cell.alignment
+        dst_cell.alignment = Alignment(
+            horizontal=s.horizontal, vertical=s.vertical, wrapText=s.wrapText,
+            shrinkToFit=s.shrinkToFit, indent=s.indent
+        )
     except: pass
-    try: dst_cell.protection = copy(src_cell.protection)
+    try:
+        dst_cell.protection = Protection(locked=src_cell.protection.locked)
     except: pass
 
 
@@ -114,7 +137,7 @@ def process_excel(file_bytes, num_po, percentages, source_col='AS', po1_col='AR'
     total_col = start_col + num_po
     data_number_format = '#,##0'
 
-    ref_hdr = ws.cell(row=header_row, column=src_idx)
+    ref_hdr = ws.cell(row=header_row, column=1)
     for i in range(num_po + 1):
         copy_cell_format(ref_hdr, ws.cell(row=header_row, column=start_col + i))
 
