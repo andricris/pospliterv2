@@ -1,7 +1,6 @@
 """
 PO Splitter API — Vercel Serverless Function (Flask + openpyxl)
 Pure Python, no COM dependency. Works in-memory (no temp files).
-Support dynamic column selection: source, PO1, HNA, Master Box.
 """
 
 import io
@@ -9,22 +8,20 @@ import json
 import traceback
 from copy import copy
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter, column_index_from_string
 
 app = Flask(__name__)
 CORS(app)
 
 # Default column constants
-DEFAULT_SOURCE_COL = 'AS'   # po sisa
-DEFAULT_PO1_COL = 'AR'      # po 1
-DEFAULT_HNA_COL = 'F'       # HNA UM
-DEFAULT_MB_COL = 'P'        # MASTER BOX
+DEFAULT_SOURCE_COL = 'AS'
+DEFAULT_PO1_COL = 'AR'
+DEFAULT_HNA_COL = 'F'
+DEFAULT_MB_COL = 'P'
 DEFAULT_ENABLE_PO1 = False
 
-COL_AT = 46  # start of new columns
+COL_AT = 46
 
 
 def copy_cell_format(src_cell, dst_cell):
@@ -94,7 +91,9 @@ def find_data_range(ws, header_row):
 
 def process_excel(file_bytes, num_po, percentages, source_col='AS', po1_col='AR',
                   enable_po1=False, hna_col='F', mb_col='P'):
-    """Process Excel in-memory. Returns BytesIO."""
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter, column_index_from_string
+
     wb = load_workbook(io.BytesIO(file_bytes))
     ws, pp_name, header_row = find_sheet_and_header(wb)
 
@@ -164,11 +163,13 @@ def process_excel(file_bytes, num_po, percentages, source_col='AS', po1_col='AR'
     wb.save(output)
     wb.close()
     output.seek(0)
-    return output
+    return output.getvalue()
 
 
 def preview_excel(file_bytes):
-    """Read Excel, return headers + ALL column values (vals) for dynamic access."""
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
+
     wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
     ws, pp_name, header_row = find_sheet_and_header(wb)
     max_col = ws.max_column or 50
@@ -196,7 +197,6 @@ def preview_excel(file_bytes):
         if no <= 0:
             continue
 
-        # Build vals array (0-indexed, ALL columns)
         vals = []
         for cell in row:
             v = cell.value
@@ -226,8 +226,7 @@ def preview_excel(file_bytes):
 
 
 # ============================================================
-# API Routes
-# Both /api/* and /* paths (Vercel may strip /api prefix)
+# API Routes (both /api/* and /* for Vercel routing)
 # ============================================================
 
 @app.route('/api/health', methods=['GET'])
@@ -283,18 +282,14 @@ def api_process():
         if total_pct != 100:
             return jsonify({'error': f'Total persentase harus 100%, sekarang {total_pct}%'}), 400
 
-        output = process_excel(file.read(), num_po, percentages,
-                               source_col, po1_col, enable_po1, hna_col, mb_col)
+        file_bytes = process_excel(file.read(), num_po, percentages,
+                                   source_col, po1_col, enable_po1, hna_col, mb_col)
 
-        return send_file(
-            output,
-            as_attachment=True,
-            download_name=f"PP_Output_PO_Split_{num_po}PO.xlsx",
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        return Response(
+            file_bytes,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename=PP_Output_PO_Split_{num_po}PO.xlsx'}
         )
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-
-
-# Vercel auto-detects Flask `app` variable — no handler needed
