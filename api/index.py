@@ -5,13 +5,16 @@ Pure Python, no COM dependency. Works in-memory (no temp files).
 
 import io
 import json
+import os
 import traceback
 
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
 from openpyxl.styles import Font, PatternFill, Border, Alignment, Protection, Side
 
-app = Flask(__name__)
+# Static folder = ../dist (frontend build output)
+DIST_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'dist')
+app = Flask(__name__, static_folder=DIST_DIR, static_url_path='')
 CORS(app)
 
 # Default column constants
@@ -157,16 +160,35 @@ def process_excel(file_bytes, num_po, percentages, source_col='AS', po1_col='AR'
 
     for row_num in range(data_start, data_end + 1):
         s_expr = source_expr(row_num)
+
+        # Running sum of previous PO columns (as Excel refs), built incrementally.
+        # Cap each PO with MIN(MROUND(...), source - prev_sum) so cumulative total
+        # can never exceed the source qty -> guarantees no minus on the last PO.
+        prev_refs = []
         for i in range(num_po):
             col_idx = start_col + i
             cell = ws.cell(row=row_num, column=col_idx)
-            if i < num_po - 1:
-                pct = percentages[i] / 100
-                cell.value = f"=MROUND({s_expr}*{pct},{mb_letter}{row_num})"
+            col_letter = get_column_letter(col_idx)
+            pct = percentages[i] / 100
+
+            if i == num_po - 1:
+                # Last PO = source - SUM(previous POs). Never negative because
+                # every previous PO was capped to source - prev_sum.
+                if prev_refs:
+                    cell.value = f"={s_expr}-({'+'.join(prev_refs)})"
+                else:
+                    # Single PO case: all qty goes here
+                    cell.value = f"={s_expr}"
             else:
-                prev_refs = [f"{get_column_letter(start_col + j)}{row_num}" for j in range(num_po - 1)]
-                cell.value = f"={s_expr}-({'+'.join(prev_refs)})"
+                # PO 1..N-1: MROUND to MB multiple, capped to remaining available qty.
+                # remaining = source - SUM(prev_refs) -> guaranteed >= 0.
+                mround_part = f"MROUND({s_expr}*{pct},{mb_letter}{row_num})"
+                if prev_refs:
+                    cell.value = f"=MIN({mround_part},{s_expr}-({'+'.join(prev_refs)}))"
+                else:
+                    cell.value = f"=MIN({mround_part},{s_expr})"
             cell.number_format = data_number_format
+            prev_refs.append(f"{col_letter}{row_num}")
 
         total_cell = ws.cell(row=row_num, column=total_col)
         po_refs = [f"{get_column_letter(start_col + j)}{row_num}" for j in range(num_po)]
@@ -251,6 +273,22 @@ def preview_excel(file_bytes):
 # ============================================================
 # API Routes (both /api/* and /* for Vercel routing)
 # ============================================================
+
+@app.route('/', methods=['GET'])
+def index():
+    """Serve frontend index.html from dist/ folder."""
+    return send_from_directory(DIST_DIR, 'index.html')
+
+
+@app.route('/<path:path>', methods=['GET'])
+def static_files(path):
+    """Serve static assets (JS, CSS, images) from dist/ folder.
+    Falls back to index.html for unknown paths (SPA support)."""
+    full = os.path.join(DIST_DIR, path)
+    if os.path.isfile(full):
+        return send_from_directory(DIST_DIR, path)
+    return send_from_directory(DIST_DIR, 'index.html')
+
 
 @app.route('/api/health', methods=['GET'])
 @app.route('/health', methods=['GET'])
