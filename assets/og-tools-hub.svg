@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Tools Hub - Tools Logistik Gratis</title>
+  <desc id="desc">Preview kartu berbagi untuk Tools Hub, katalog tools gratis untuk logistik, Excel, PO, dan operasional.</desc>
+  <defs>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0v48" fill="none" stroke="#f1e3bd" stroke-width="2"/>
+    </pattern>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="14" dy="14" stdDeviation="0" flood-color="#101010" flood-opacity="1"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="#fff7dc"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="75" y="65" width="950" height="430" rx="18" fill="#fffdf7" stroke="#101010" stroke-width="8"/>
+    <path d="M93 65h914a18 18 0 0 1 18 18v72H75V83a18 18 0 0 1 18-18Z" fill="#e8396b" stroke="#101010" stroke-width="8"/>
+    <circle cx="118" cy="110" r="11" fill="#fffdf7"/>
+    <circle cx="153" cy="110" r="11" fill="#fffdf7"/>
+    <circle cx="188" cy="110" r="11" fill="#fffdf7"/>
+  </g>
+
+  <text x="130" y="245" fill="#101010" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="800">Tools Hub</text>
+  <text x="132" y="315" fill="#e8396b" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="800">Tools Logistik Gratis</text>
+  <text x="132" y="378" fill="#424242" font-family="Arial, Helvetica, sans-serif" font-size="30">Katalog tools gratis untuk logistik, supply chain,</text>
+  <text x="132" y="420" fill="#424242" font-family="Arial, Helvetica, sans-serif" font-size="30">Excel, PO, dan operasional gudang.</text>
+
+  <g transform="translate(760 215)">
+    <rect x="0" y="0" width="165" height="165" rx="20" fill="#dff8ea" stroke="#101010" stroke-width="7"/>
+    <path d="M40 92h38M40 126h75M98 55l42 33-42 33Z" fill="#1edb83" stroke="#101010" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" fill="#101010">
+    <rect x="132" y="460" width="155" height="54" rx="16" fill="#ffec70" stroke="#101010" stroke-width="5"/>
+    <text x="164" y="496">Excel</text>
+    <rect x="310" y="460" width="158" height="54" rx="16" fill="#1edb83" stroke="#101010" stroke-width="5"/>
+    <text x="337" y="496">Logistik</text>
+    <rect x="492" y="460" width="96" height="54" rx="16" fill="#3698f4" stroke="#101010" stroke-width="5"/>
+    <text x="522" y="496">PO</text>
+  </g>
+
+  <g transform="translate(1066 128)">
+    <rect x="0" y="0" width="82" height="56" rx="12" fill="#e8396b" stroke="#101010" stroke-width="5"/>
+    <rect x="0" y="82" width="82" height="56" rx="12" fill="#1edb83" stroke="#101010" stroke-width="5"/>
+    <rect x="0" y="164" width="82" height="56" rx="12" fill="#3698f4" stroke="#101010" stroke-width="5"/>
+    <rect x="0" y="246" width="82" height="56" rx="12" fill="#ffbe78" stroke="#101010" stroke-width="5"/>
+  </g>
+</svg>
