@@ -89,27 +89,59 @@ def find_sheet_and_header(wb):
     return ws, pp_name, header_row
 
 
+def to_number(value):
+    """Coerce a cell value to float, or None if it is not numeric.
+    Handles cached Excel errors (#VALUE!, #REF!, #N/A...) as non-numeric."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def is_product_row(row):
+    """Detect a product data row without relying on the NO column.
+
+    The NO column is often a formula (e.g. =A6+1) whose cached value can be an
+    Excel error (#VALUE!/#REF!) when the sheet is read with data_only=True.
+    A row counts as data when it carries a PART NO / SUPPLIER / DESCRIPTION,
+    or a positive numeric / formula in column A.
+    """
+    def _filled(v):
+        return v is not None and str(v).strip() != ''
+
+    a = row[0].value if len(row) > 0 else None
+    b = row[1].value if len(row) > 1 else None
+    c = row[2].value if len(row) > 2 else None
+    d = row[3].value if len(row) > 3 else None
+
+    if _filled(c) or _filled(b) or _filled(d):
+        return True
+    num = to_number(a)
+    if num is not None and num > 0:
+        return True
+    if isinstance(a, str) and a.startswith('='):
+        return True
+    return False
+
+
 def find_data_range(ws, header_row):
     max_row = ws.max_row or 1
+    max_col = ws.max_column or 3
     data_start = None
     data_end = None
-    for row_num in range(header_row + 1, max_row + 1):
-        cell_a = ws.cell(row=row_num, column=1).value
-        if cell_a is not None:
-            is_data = False
-            if isinstance(cell_a, (int, float)):
-                is_data = cell_a > 0
-            elif isinstance(cell_a, str):
-                try:
-                    val = float(cell_a)
-                    is_data = val > 0
-                except (ValueError, TypeError):
-                    if cell_a.startswith('='):
-                        is_data = True
-            if is_data:
-                if data_start is None:
-                    data_start = row_num
-                data_end = row_num
+    for row in ws.iter_rows(min_row=header_row + 1, max_row=max_row,
+                            max_col=max(max_col, 4)):
+        if is_product_row(row):
+            row_num = row[0].row
+            if data_start is None:
+                data_start = row_num
+            data_end = row_num
     if data_start is None:
         raise ValueError('Data produk tidak ditemukan.')
     return data_start, data_end
@@ -231,16 +263,17 @@ def preview_excel(file_bytes):
             })
 
     products = []
+    seq = 0
     for row in ws.iter_rows(min_row=header_row + 1, max_row=ws.max_row):
+        if not is_product_row(row):
+            continue
+
+        # NO column may hold an Excel error (#VALUE!/#REF!) when the sheet is
+        # read with data_only=True. Fall back to a sequential row counter.
         a_val = row[0].value
-        if a_val is None:
-            continue
-        try:
-            no = int(float(a_val))
-        except (ValueError, TypeError):
-            continue
-        if no <= 0:
-            continue
+        num = to_number(a_val)
+        seq += 1
+        no = int(num) if (num is not None and num > 0) else seq
 
         vals = []
         for cell in row:
@@ -250,10 +283,8 @@ def preview_excel(file_bytes):
             elif isinstance(v, (int, float)):
                 vals.append(v)
             else:
-                try:
-                    vals.append(float(v))
-                except:
-                    vals.append(0)
+                n = to_number(v)
+                vals.append(n if n is not None else 0)
 
         def str_val(v):
             return str(v) if v is not None else ''
